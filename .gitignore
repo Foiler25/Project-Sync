@@ -8,3 +8,5 @@ xcuserdata/
 .release-notes-draft.md
 RELEASE_NOTES.md
 keyfile.txt
+build-dmg.sh
+release-github.sh

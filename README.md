@@ -50,32 +50,6 @@ Sparkle 2.9.4 is embedded in the app bundle. The Settings window, app menu, and 
 
 Development happens on `dev`. The release script intentionally refuses to publish from that branch.
 
-When a version is ready:
-
-1. On `dev`, increase `CFBundleShortVersionString` and the monotonically increasing integer `CFBundleVersion` in `Support/Info.plist`.
-2. Commit and test the release candidate on `dev`.
-3. Merge `dev` into `main`, then push the exact release commit to `origin/main`.
-4. From `main`, build and Sparkle-sign the DMG using the same version and build numbers:
-
-   ```sh
-   ./build-dmg.sh
-   ```
-
-   Use `--local-build` when the repository is stored on a slow or network-mounted volume.
-
-5. Install and smoke-test the generated `Project-Sync-VERSION.dmg`.
-6. Generate the release-notes handoff:
-
-   ```sh
-   ./release-github.sh
-   ```
-
-7. Review `.release-notes-draft.md`, write `RELEASE_NOTES.md`, and explicitly publish:
-
-   ```sh
-   ./release-github.sh --publish
-   ```
-
 The publish phase rechecks the DMG checksum and size, requires a clean `main` at the exact commit recorded during the build, asks for confirmation, creates the tag and GitHub release, then atomically appends the signed release to `appcast.xml`.
 
 The Sparkle EdDSA private key is stored in the login Keychain under account `project-sync`. Its committed public key is safe to distribute. Back up the private key somewhere secure and outside Git:
