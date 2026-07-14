@@ -55,5 +55,37 @@
       ]]></description>
       <enclosure url="https://github.com/Foiler25/Project-Sync/releases/download/v1.1.0/Project-Sync-1.1.0.dmg" sparkle:edSignature="v9VP3d1/ILjop+LgsazixVeDl2KLUadQ5C96Pb6lOChLr6d6dgHyE04sstaciV1O985Hwpy9fOTvuZC7cuLPAg==" length="3402759" type="application/octet-stream" />
     </item>
+      <item>
+      <title>Project Sync 1.2.0</title>
+      <pubDate>Tue, 14 Jul 2026 16:32:51 +0000</pubDate>
+      <sparkle:version>7</sparkle:version>
+      <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+<h3>Project Sync 1.2.0</h3>
+<h4>New</h4>
+<ul>
+<li>Verify a job on demand, or have Project Sync automatically verify every successful sync with checksums. Verification never changes destination files.</li>
+<li>Optionally keep versioned copies of files that a sync replaces or removes from a Mac or mounted-network destination. Browse archived versions and restore individual items; choose how many versions to retain.</li>
+<li>Set a maximum number of simultaneous jobs. Additional syncs wait in a visible queue and start automatically as capacity becomes available.</li>
+<li>Automatically retry temporary network, mounted-drive, and connection failures with configurable retry limits and backoff. You can also run eligible jobs whenever a source or destination volume mounts.</li>
+<li>Pause a real-time watcher for an hour or until tomorrow, then resume it when ready.</li>
+<li>Configure macOS notifications for sync starts, successes, failures, retry/waiting states, and backups that may be out of date.</li>
+<li>Search run history, set a history retention limit, delete individual entries, clear a job’s history, or clear all history from Settings.</li>
+<li>View transfer summaries in run history, including changed and transferred files, deleted files, data transferred, and speed.</li>
+<li>Add notes to a sync job, duplicate an existing job for reuse, and add common exclusion presets for developer projects, macOS clutter, or caches.</li>
+<li>Export a privacy-redacted diagnostic report to help troubleshoot Project Sync without including your file contents, paths, SSH usernames, notes, or exclusion names.</li>
+</ul>
+<h4>Changed</h4>
+<ul>
+<li>Project Sync now shows clearer queued, syncing, and verifying states, plus a brief on-screen confirmation when a sync or preview starts.</li>
+<li>Real-time syncs wait for any active sync or verification to finish, then run one follow-up sync if source changes arrived in the meantime.</li>
+</ul>
+<h4>Install &amp; update</h4>
+<p>Existing users can use <strong>Check for Updates…</strong> in Project Sync.</p>
+<p>New users: download <code>Project-Sync-1.2.0.dmg</code>, open it, and drag Project Sync to Applications.</p>
+      ]]></description>
+      <enclosure url="https://github.com/Foiler25/Project-Sync/releases/download/v1.2.0/Project-Sync-1.2.0.dmg" sparkle:edSignature="LqmFRdcVQBeGHL204pwqS+pugICzcQjBKe5LqZ8wP4NYmDzJnSdyDTqUjlPRp7hW44i69p2BwdfZsjqaGYoWDw==" length="3647541" type="application/octet-stream" />
+    </item>
   </channel>
 </rss>
