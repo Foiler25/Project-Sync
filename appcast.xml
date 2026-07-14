@@ -87,5 +87,32 @@
       ]]></description>
       <enclosure url="https://github.com/Foiler25/Project-Sync/releases/download/v1.2.0/Project-Sync-1.2.0.dmg" sparkle:edSignature="LqmFRdcVQBeGHL204pwqS+pugICzcQjBKe5LqZ8wP4NYmDzJnSdyDTqUjlPRp7hW44i69p2BwdfZsjqaGYoWDw==" length="3647541" type="application/octet-stream" />
     </item>
+      <item>
+      <title>Project Sync 1.2.5</title>
+      <pubDate>Tue, 14 Jul 2026 18:25:25 +0000</pubDate>
+      <sparkle:version>8</sparkle:version>
+      <sparkle:shortVersionString>1.2.5</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+<h3>Project Sync 1.2.5</h3>
+<h4>New</h4>
+<ul>
+<li>Open <strong>View Live Sync…</strong> while a sync or preview is running to follow transfer output as it arrives, see current-file progress when available, reveal the log in Finder, or stop the transfer.</li>
+<li>Verification now separates file-content differences, permission differences, other metadata differences, and destination-only items. Results include plain-language next steps and saved verification logs.</li>
+<li>Choose whether permission differences must pass verification for each job. File contents are always checksum-verified; permissions can be treated as advisory when they are not meaningful for a destination.</li>
+<li>Expand exclusion presets with ready-made options for JavaScript/TypeScript, Swift/Xcode, Python, Rust, Java/Kotlin, .NET, C/C++, Ruby, Dart/Flutter, and more.</li>
+<li>Use optional exclusion presets for local environment secrets or source-control metadata when that fits the job’s purpose.</li>
+</ul>
+<h4>Changed</h4>
+<ul>
+<li>The <strong>Developer projects</strong> preset now excludes common dependency folders, caches, and build output across supported ecosystems while keeping source files, lockfiles, source-control history, and local environment files by default.</li>
+<li>Jobs that use a mounted network drive now treat POSIX permission and directory-timestamp differences as advisory by default, avoiding repeated metadata updates on SMB and many NAS volumes. You can require permission matching in the job options.</li>
+</ul>
+<h4>Install &amp; update</h4>
+<p>Existing users can use <strong>Check for Updates…</strong> in Project Sync.</p>
+<p>New users: download <code>Project-Sync-1.2.5.dmg</code>, open it, and drag Project Sync to Applications.</p>
+      ]]></description>
+      <enclosure url="https://github.com/Foiler25/Project-Sync/releases/download/v1.2.5/Project-Sync-1.2.5.dmg" sparkle:edSignature="PN5vmWLorn7eChl13z2+wXTh4UJ28IP5WguKaItIlp/zOGlGzIMxkS3xWgmU5DheNdbE4UBmGpLqC/StoQ8HBQ==" length="3709050" type="application/octet-stream" />
+    </item>
   </channel>
 </rss>
