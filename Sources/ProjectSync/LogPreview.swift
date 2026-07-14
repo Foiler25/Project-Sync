@@ -54,6 +54,12 @@ enum LogPreviewLoader {
 
 struct ReadOnlyLogTextView: NSViewRepresentable {
     let text: String
+    let followTail: Bool
+
+    init(text: String, followTail: Bool = false) {
+        self.text = text
+        self.followTail = followTail
+    }
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -85,6 +91,10 @@ struct ReadOnlyLogTextView: NSViewRepresentable {
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView, textView.string != text else { return }
         textView.string = text
-        textView.scrollToBeginningOfDocument(nil)
+        if followTail {
+            textView.scrollToEndOfDocument(nil)
+        } else {
+            textView.scrollToBeginningOfDocument(nil)
+        }
     }
 }

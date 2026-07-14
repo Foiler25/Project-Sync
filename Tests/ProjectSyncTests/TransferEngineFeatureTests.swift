@@ -17,6 +17,10 @@ final class TransferEngineFeatureTests: XCTestCase {
         let command = try RsyncCommand.build(for: fixture.job)
 
         XCTAssertTrue(command.arguments.contains("--stats"))
+        XCTAssertTrue(command.arguments.contains("--progress"))
+
+        let preview = try RsyncCommand.build(for: fixture.job, dryRun: true)
+        XCTAssertFalse(preview.arguments.contains("--progress"))
     }
 
     func testStatsParserReadsOpenRsyncOutput() {
@@ -40,6 +44,41 @@ final class TransferEngineFeatureTests: XCTestCase {
         XCTAssertEqual(summary.totalBytes, 2_500_000)
         XCTAssertEqual(summary.transferredBytes, 1_250_000)
         XCTAssertEqual(summary.bytesPerSecond, 176_000)
+    }
+
+    func testVerificationParserSeparatesContentPermissionsAndMetadata() {
+        let output = """
+        .f...p... permission-only.txt
+        .d...p... permission-only-directory/
+        .d..t.... timestamp-only-directory/
+        >f..tp... content-update.txt
+        >f+++++++ new-file.txt
+        *deleting destination-only.txt
+        """
+
+        let summary = RsyncOutputParser.parseVerification(output)
+
+        XCTAssertEqual(summary.contentDifferences, 2)
+        XCTAssertEqual(summary.permissionDifferences, 2)
+        XCTAssertEqual(summary.metadataDifferences, 1)
+        XCTAssertEqual(summary.destinationOnlyItems, 1)
+    }
+
+    func testNetworkJobTreatsPermissionsAsAdvisoryByDefault() throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        var job = fixture.job
+        job.destination.kind = .network
+
+        XCTAssertFalse(job.verifiesPermissions)
+        let command = try RsyncCommand.build(for: job)
+        XCTAssertTrue(command.arguments.contains("--no-perms"))
+        XCTAssertTrue(command.arguments.contains("--no-owner"))
+        XCTAssertTrue(command.arguments.contains("--no-group"))
+        XCTAssertTrue(command.arguments.contains("--omit-dir-times"))
+
+        let verificationCommand = try RsyncCommand.buildVerification(for: job)
+        XCTAssertFalse(verificationCommand.arguments.contains("--no-perms"))
     }
 
     func testRunPopulatesStatsAndTriggerWhileKeepingLog() async throws {
@@ -136,15 +175,44 @@ final class TransferEngineFeatureTests: XCTestCase {
 
         let matching = try await fixture.runner.verify(job: fixture.job)
         XCTAssertTrue(matching.matches)
+        XCTAssertTrue(matching.fileContentMatches)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: try XCTUnwrap(matching.logPath)))
 
         try Data("source changed and is longer".utf8).write(to: sourceFile)
         let mismatch = try await fixture.runner.verify(job: fixture.job)
         XCTAssertFalse(mismatch.matches)
+        XCTAssertFalse(mismatch.fileContentMatches)
         XCTAssertEqual(try String(contentsOf: destinationFile, encoding: .utf8), "matching")
         let verificationCommand = try RsyncCommand.buildVerification(for: fixture.job)
         XCTAssertTrue(verificationCommand.arguments.contains("--checksum"))
         XCTAssertTrue(verificationCommand.arguments.contains("--dry-run"))
         XCTAssertFalse(verificationCommand.arguments.contains("--backup"))
+    }
+
+    func testPermissionDifferencesCanBeAdvisoryOrRequired() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let sourceFile = fixture.source.appendingPathComponent("permissions.txt")
+        let destinationFile = fixture.destination.appendingPathComponent("permissions.txt")
+        try Data("same content".utf8).write(to: sourceFile)
+        _ = try await fixture.runner.run(job: fixture.job, dryRun: false, processBox: RunningProcess())
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: destinationFile.path)
+
+        var advisoryJob = fixture.job
+        advisoryJob.verifyPermissions = false
+        let advisory = try await fixture.runner.verify(job: advisoryJob)
+        XCTAssertTrue(advisory.matches)
+        XCTAssertTrue(advisory.fileContentMatches)
+        XCTAssertGreaterThan(advisory.permissionDifferences ?? 0, 0)
+        XCTAssertEqual(advisory.permissionVerificationEnabled, false)
+
+        var requiredJob = fixture.job
+        requiredJob.verifyPermissions = true
+        let required = try await fixture.runner.verify(job: requiredJob)
+        XCTAssertFalse(required.matches)
+        XCTAssertTrue(required.fileContentMatches)
+        XCTAssertGreaterThan(required.permissionDifferences ?? 0, 0)
+        XCTAssertEqual(required.permissionVerificationEnabled, true)
     }
 }
 

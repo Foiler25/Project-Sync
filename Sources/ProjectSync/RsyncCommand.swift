@@ -30,9 +30,17 @@ struct RsyncCommand: Equatable {
         // Keep byte statistics exact so stored run summaries are not reconstructed from
         // rounded human-readable values. The UI formats these values for display.
         var arguments = ["-a", "-v", "--itemize-changes", "--partial", "--stats"]
+        // Mounted SMB shares commonly normalize POSIX modes and directory timestamps.
+        // Do not repeatedly write metadata the job has explicitly chosen not to preserve.
+        // Verification deliberately omits these flags so it can still report those
+        // differences as a separate advisory category.
+        if !job.verifiesPermissions && !checksum {
+            arguments += ["--no-perms", "--no-owner", "--no-group", "--omit-dir-times"]
+        }
         if job.preserveExtendedAttributes { arguments.append("-E") }
         if job.mode == .mirror { arguments.append("--delete") }
         if dryRun { arguments.append("--dry-run") }
+        if !dryRun { arguments.append("--progress") }
         if checksum { arguments.append("--checksum") }
 
         // Archive directories live below the destination, so this anchored exclusion also

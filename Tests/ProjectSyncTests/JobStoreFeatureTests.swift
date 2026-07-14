@@ -103,7 +103,7 @@ final class JobStoreFeatureTests: XCTestCase {
         var jobObject = try XCTUnwrap(JSONSerialization.jsonObject(with: encoder.encode(SyncJob())) as? [String: Any])
         for key in [
             "notes", "archiveReplacedFiles", "archiveRetentionCount", "verifyAfterSync",
-            "runWhenVolumeMounts", "realtimePausedUntil", "lastVerificationAt", "lastVerificationSucceeded"
+            "verifyPermissions", "runWhenVolumeMounts", "realtimePausedUntil", "lastVerificationAt", "lastVerificationSucceeded"
         ] { jobObject.removeValue(forKey: key) }
         let decodedJob = try decoder.decode(SyncJob.self, from: JSONSerialization.data(withJSONObject: jobObject))
         XCTAssertNil(decodedJob.notes)

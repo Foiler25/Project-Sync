@@ -268,6 +268,7 @@ struct JobDetailView: View {
     @State private var confirmingClearHistory = false
     @State private var historySearchText = ""
     @State private var showingArchives = false
+    @State private var selectedLiveSync: ActiveSyncSession?
     private let centerGutterWidth: CGFloat = 34
 
     private var running: Bool { store.runningJobIDs.contains(job.id) }
@@ -280,6 +281,9 @@ struct JobDetailView: View {
     }
     private var filteredJobHistory: [RunRecord] {
         jobHistory.filter { $0.matchesHistorySearch(historySearchText) }
+    }
+    private var latestVerification: VerificationReport? {
+        jobHistory.compactMap(\.verification).first
     }
 
     var body: some View {
@@ -308,6 +312,14 @@ struct JobDetailView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
+                    if let session = store.activeSync(for: job.id) {
+                        Button {
+                            selectedLiveSync = session
+                        } label: {
+                            Label("View Live Sync…", systemImage: "waveform.path.ecg")
+                        }
+                        .controlSize(.large)
+                    }
                     Button { store.run(job.id, dryRun: true) } label: { Label("Preview Changes", systemImage: "doc.text.magnifyingglass") }
                         .controlSize(.large).disabled(busy)
                     Button { store.verify(job.id) } label: { Label("Verify", systemImage: "checkmark.shield") }
@@ -397,7 +409,11 @@ struct JobDetailView: View {
                     )
                 }
 
-                if let verifiedAt = job.lastVerificationAt, let succeeded = job.lastVerificationSucceeded {
+                if let report = latestVerification {
+                    VerificationResultCard(report: report) {
+                        store.setPermissionVerification(false, for: job.id)
+                    }
+                } else if let verifiedAt = job.lastVerificationAt, let succeeded = job.lastVerificationSucceeded {
                     Label {
                         Text(succeeded ? "Backup verified" : "Verification found differences")
                             .fontWeight(.medium)
@@ -477,6 +493,7 @@ struct JobDetailView: View {
             .padding(32)
         }
         .sheet(item: $selectedRecord) { LogView(record: $0) }
+        .sheet(item: $selectedLiveSync) { LiveSyncView(session: $0) }
         .sheet(isPresented: $showingArchives) {
             ArchiveBrowserView(job: job)
         }
@@ -614,6 +631,118 @@ private struct InfoCard: View {
     }
 }
 
+private struct VerificationResultCard: View {
+    let report: VerificationReport
+    var makePermissionsAdvisory: (() -> Void)? = nil
+    @State private var showsFixes = false
+
+    private var contentDifferences: Int { report.contentDifferences ?? 0 }
+    private var permissionDifferences: Int { report.permissionDifferences ?? 0 }
+    private var metadataDifferences: Int { report.metadataDifferences ?? 0 }
+    private var destinationOnlyItems: Int { report.destinationOnlyItems ?? 0 }
+    private var permissionsRequired: Bool { report.permissionVerificationEnabled ?? false }
+    private var title: String {
+        if !report.hasDetailedResults { return "Verification could not complete" }
+        if !report.fileContentMatches { return "File content needs attention" }
+        if permissionsRequired && permissionDifferences > 0 { return "File content verified; permissions differ" }
+        return "File content verified"
+    }
+    private var color: Color {
+        if !report.hasDetailedResults { return .red }
+        return report.fileContentMatches && (!permissionsRequired || permissionDifferences == 0) ? .green : .orange
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: !report.hasDetailedResults
+                      ? "xmark.octagon.fill"
+                      : (report.fileContentMatches ? "checkmark.shield.fill" : "exclamationmark.shield.fill"))
+                    .foregroundStyle(color)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title).font(.headline)
+                    Text(report.message).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text(report.verifiedAt.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            if report.hasDetailedResults {
+                HStack(spacing: 8) {
+                    VerificationMetric(
+                        title: "File content",
+                        value: contentDifferences == 0 && destinationOnlyItems == 0
+                            ? "Matches" : "\(contentDifferences + destinationOnlyItems) different",
+                        symbol: contentDifferences == 0 && destinationOnlyItems == 0 ? "checkmark.circle.fill" : "exclamationmark.circle.fill",
+                        color: contentDifferences == 0 && destinationOnlyItems == 0 ? .green : .orange
+                    )
+                    VerificationMetric(
+                        title: "Permissions",
+                        value: permissionDifferences == 0
+                            ? "Match" : "\(permissionDifferences) \(permissionsRequired ? "different" : "advisory")",
+                        symbol: permissionDifferences == 0 ? "checkmark.circle.fill" : "lock.trianglebadge.exclamationmark",
+                        color: permissionDifferences == 0 ? .green : (permissionsRequired ? .orange : .secondary)
+                    )
+                    VerificationMetric(
+                        title: "Other metadata",
+                        value: metadataDifferences == 0 ? "Matches" : "\(metadataDifferences) advisory",
+                        symbol: metadataDifferences == 0 ? "checkmark.circle.fill" : "info.circle.fill",
+                        color: metadataDifferences == 0 ? .green : .secondary
+                    )
+                }
+            }
+
+            if permissionsRequired, permissionDifferences > 0, let makePermissionsAdvisory {
+                Button("Treat Permission Differences as Advisory for This Job") {
+                    makePermissionsAdvisory()
+                }
+                .controlSize(.small)
+            }
+
+            if let fixes = report.potentialFixes, !fixes.isEmpty {
+                DisclosureGroup("Potential fixes", isExpanded: $showsFixes) {
+                    VStack(alignment: .leading, spacing: 7) {
+                        ForEach(fixes, id: \.self) { fix in
+                            Label(fix, systemImage: "wrench.and.screwdriver")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.top, 7)
+                }
+                .font(.caption.weight(.medium))
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(color.opacity(0.07), in: RoundedRectangle(cornerRadius: 11))
+        .overlay { RoundedRectangle(cornerRadius: 11).stroke(color.opacity(0.25)) }
+    }
+}
+
+private struct VerificationMetric: View {
+    let title: String
+    let value: String
+    let symbol: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Image(systemName: symbol).foregroundStyle(color)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).font(.caption2).foregroundStyle(.secondary)
+                Text(value).font(.caption.weight(.medium))
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background.opacity(0.45), in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
 struct RunRecordRow: View {
     let record: RunRecord
     let onDelete: (() -> Void)?
@@ -699,6 +828,11 @@ struct LogView: View {
                 Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
             }.padding()
             Divider()
+            if let verification = record.verification {
+                VerificationResultCard(report: verification)
+                    .padding()
+                Divider()
+            }
             if let preview {
                 ReadOnlyLogTextView(text: preview.text)
             } else {
@@ -710,6 +844,99 @@ struct LogView: View {
         .task(id: record.id) {
             preview = await LogPreviewLoader.load(path: record.logPath, fallback: record.message)
         }
+    }
+}
+
+struct LiveSyncView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var store: JobStore
+    let session: ActiveSyncSession
+    @State private var preview: LogPreview?
+    @State private var now = Date()
+
+    private var isRunning: Bool { store.runningJobIDs.contains(session.jobID) }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(session.jobName).font(.headline)
+                    HStack(spacing: 6) {
+                        Text(session.dryRun ? "Live preview" : "Live sync")
+                        Text("•")
+                        Text(now.timeIntervalSince(session.startedAt).formattedDuration)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Reveal Log") {
+                    NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: session.logPath)])
+                }
+                if isRunning {
+                    Button("Stop", role: .destructive) { store.cancel(session.jobID) }
+                }
+                Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
+            }
+            .padding()
+
+            VStack(alignment: .leading, spacing: 7) {
+                HStack {
+                    Label(
+                        isRunning ? "Transfer in progress" : "Transfer finished",
+                        systemImage: isRunning ? "arrow.triangle.2.circlepath" : "checkmark.circle"
+                    )
+                    .font(.callout.weight(.medium))
+                    Spacer()
+                    if let percentage = latestPercentage, isRunning {
+                        Text("Current file: \(percentage)%")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if let percentage = latestPercentage, isRunning {
+                    ProgressView(value: Double(percentage), total: 100)
+                        .progressViewStyle(.linear)
+                } else if isRunning {
+                    ProgressView().progressViewStyle(.linear)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 12)
+
+            Divider()
+            if let preview {
+                ReadOnlyLogTextView(
+                    text: preview.text.replacingOccurrences(of: "\r", with: "\n"),
+                    followTail: isRunning
+                )
+            } else {
+                ProgressView("Waiting for transfer output…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .frame(minWidth: 760, minHeight: 520)
+        .task(id: session.id) {
+            while !Task.isCancelled {
+                preview = await LogPreviewLoader.load(
+                    path: session.logPath,
+                    fallback: "Waiting for transfer output…"
+                )
+                now = Date()
+                if !store.runningJobIDs.contains(session.jobID) { break }
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+        }
+    }
+
+    private var latestPercentage: Int? {
+        guard let text = preview?.text,
+              let expression = try? NSRegularExpression(pattern: #"(\d{1,3})%"#) else { return nil }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = expression.matches(in: text, range: range).last,
+              let percentRange = Range(match.range(at: 1), in: text),
+              let value = Int(text[percentRange]), (0...100).contains(value) else { return nil }
+        return value
     }
 }
 

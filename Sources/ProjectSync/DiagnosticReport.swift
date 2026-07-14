@@ -91,6 +91,9 @@ struct DiagnosticReportBuilder {
             }
             if let verification = record.verification {
                 lines.append("  Verification: \(verification.matches ? "passed" : "failed") — \(redact(verification.message))")
+                if verification.hasDetailedResults {
+                    lines.append("  Verification categories: content=\(verification.contentDifferences ?? 0), permissions=\(verification.permissionDifferences ?? 0), metadata=\(verification.metadataDifferences ?? 0), destination-only=\(verification.destinationOnlyItems ?? 0), permission-check=\((verification.permissionVerificationEnabled ?? false) ? "required" : "advisory")")
+                }
             }
             if let logTail = recentLogTails[record.id], !logTail.isEmpty {
                 lines.append("  Sanitized log tail:")

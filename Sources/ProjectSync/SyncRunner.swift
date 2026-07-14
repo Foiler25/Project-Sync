@@ -54,7 +54,8 @@ struct SyncRunner {
         job: SyncJob,
         dryRun: Bool,
         processBox: RunningProcess,
-        trigger: RunTrigger = .manual
+        trigger: RunTrigger = .manual,
+        onLogReady: @escaping @MainActor (URL, Date) -> Void = { _, _ in }
     ) async throws -> RunRecord {
         let startedAt = Date()
         let command = try RsyncCommand.build(for: job, dryRun: dryRun, archiveDate: startedAt)
@@ -67,6 +68,7 @@ struct SyncRunner {
         let stamp = ISO8601DateFormatter().string(from: startedAt).replacingOccurrences(of: ":", with: "-")
         let logURL = logsURL.appendingPathComponent("\(safeFilename(job.name))-\(stamp).log")
         FileManager.default.createFile(atPath: logURL.path, contents: nil)
+        await onLogReady(logURL, startedAt)
 
         return try await Task.detached(priority: .userInitiated) {
             let handle = try FileHandle(forWritingTo: logURL)
@@ -136,15 +138,19 @@ struct SyncRunner {
     /// Performs a checksum comparison using rsync dry-run mode. A successful comparison
     /// never writes to the destination, including version archive directories.
     func verify(job: SyncJob, processBox: RunningProcess = RunningProcess()) async throws -> VerificationReport {
+        let startedAt = Date()
         let command = try RsyncCommand.buildVerification(for: job)
-        let temporaryURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("project-sync-verification-\(UUID().uuidString).log")
-        FileManager.default.createFile(atPath: temporaryURL.path, contents: nil)
+        let logsURL = applicationSupportURL.appendingPathComponent("Logs", isDirectory: true)
+        try FileManager.default.createDirectory(at: logsURL, withIntermediateDirectories: true)
+        let stamp = ISO8601DateFormatter().string(from: startedAt).replacingOccurrences(of: ":", with: "-")
+        let logURL = logsURL.appendingPathComponent("\(safeFilename(job.name))-verification-\(stamp).log")
+        FileManager.default.createFile(atPath: logURL.path, contents: nil)
 
         return try await Task.detached(priority: .userInitiated) {
-            defer { try? FileManager.default.removeItem(at: temporaryURL) }
-            let handle = try FileHandle(forWritingTo: temporaryURL)
+            let handle = try FileHandle(forWritingTo: logURL)
             defer { try? handle.close() }
+            let heading = "Project Sync Verification\nStarted: \(startedAt.formatted())\nCommand: \(command.preview)\n\n"
+            try handle.write(contentsOf: Data(heading.utf8))
 
             let process = Process()
             process.executableURL = URL(fileURLWithPath: command.executable)
@@ -164,27 +170,54 @@ struct SyncRunner {
                 throw SyncError.cancelled
             }
             guard process.terminationStatus == 0 else {
-                throw SyncError.processFailed(
-                    process.terminationStatus,
-                    Self.tail(of: temporaryURL, bytes: 2_000)
+                let tail = Self.tail(of: logURL, bytes: 2_000)
+                return VerificationReport(
+                    verifiedAt: Date(),
+                    matches: false,
+                    message: "Verification could not complete because rsync exited with code \(process.terminationStatus). \(tail)",
+                    potentialFixes: [
+                        "Confirm that both locations are connected and readable, then try verification again.",
+                        "Open the saved verification log for the exact rsync error and affected path."
+                    ],
+                    logPath: logURL.path
                 )
             }
 
-            let summary = RsyncOutputParser.parse(url: temporaryURL)
-            let changed = summary.filesChanged ?? 0
-            let deleted = summary.filesDeleted ?? 0
-            let matches = changed == 0 && deleted == 0
+            let summary = RsyncOutputParser.parseVerification(url: logURL)
+            let contentMatches = summary.contentDifferences == 0 &&
+                (job.mode != .mirror || summary.destinationOnlyItems == 0)
+            let permissionsMatchPolicy = !job.verifiesPermissions || summary.permissionDifferences == 0
+            let matches = contentMatches && permissionsMatchPolicy
             let message: String
-            if job.mode == .mirror {
-                message = matches
-                    ? "Verification completed. Source and destination match."
-                    : "Verification found \(changed) changed item\(changed == 1 ? "" : "s") and \(deleted) destination-only item\(deleted == 1 ? "" : "s")."
+            if !contentMatches {
+                var parts = ["\(summary.contentDifferences) file content difference\(summary.contentDifferences == 1 ? "" : "s")"]
+                if job.mode == .mirror, summary.destinationOnlyItems > 0 {
+                    parts.append("\(summary.destinationOnlyItems) destination-only item\(summary.destinationOnlyItems == 1 ? "" : "s")")
+                }
+                message = "Verification found " + parts.joined(separator: " and ") + "."
+            } else if summary.permissionDifferences > 0 {
+                message = job.verifiesPermissions
+                    ? "File content matches, but \(summary.permissionDifferences) permission difference\(summary.permissionDifferences == 1 ? "" : "s") requires attention."
+                    : "File content verified. \(summary.permissionDifferences) permission difference\(summary.permissionDifferences == 1 ? " was" : "s were") treated as advisory."
+            } else if summary.metadataDifferences > 0 {
+                message = "File content verified. \(summary.metadataDifferences) metadata difference\(summary.metadataDifferences == 1 ? " was" : "s were") treated as advisory."
             } else {
-                message = matches
-                    ? "Verification completed. All source items match the destination."
-                    : "Verification found \(changed) source item\(changed == 1 ? "" : "s") that differ from the destination. Extra backup files are intentionally allowed."
+                message = job.mode == .mirror
+                    ? "Verification completed. File content matches in both locations."
+                    : "Verification completed. All source file content matches the destination."
             }
-            return VerificationReport(verifiedAt: Date(), matches: matches, message: message)
+            return VerificationReport(
+                verifiedAt: Date(),
+                matches: matches,
+                message: message,
+                contentDifferences: summary.contentDifferences,
+                permissionDifferences: summary.permissionDifferences,
+                metadataDifferences: summary.metadataDifferences,
+                destinationOnlyItems: summary.destinationOnlyItems,
+                permissionVerificationEnabled: job.verifiesPermissions,
+                potentialFixes: Self.verificationFixes(for: summary, job: job),
+                logPath: logURL.path
+            )
         }.value
     }
 
@@ -338,6 +371,32 @@ struct SyncRunner {
         let slice = data.suffix(bytes)
         return String(decoding: slice, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
     }
+
+    private static func verificationFixes(for summary: VerificationSummary, job: SyncJob) -> [String] {
+        var fixes: [String] = []
+        if summary.contentDifferences > 0 || (job.mode == .mirror && summary.destinationOnlyItems > 0) {
+            fixes.append("Run Preview Changes to inspect the pending file operations, then run the sync again.")
+            fixes.append("Pause apps or tools that are writing to the source until verification finishes.")
+        }
+        if summary.permissionDifferences > 0 {
+            if job.source.kind == .network || job.destination.kind == .network {
+                fixes.append("SMB and many NAS volumes normalize POSIX permissions. Keep permission verification advisory, or configure ACL and Unix-permission support on the NAS.")
+            } else {
+                fixes.append("Check file ownership and access rights, then sync again; permission verification can also be disabled for this job.")
+            }
+        }
+        if summary.metadataDifferences > 0 {
+            fixes.append("Check clock and timestamp precision settings on the NAS or remote host; metadata-only differences do not mean file contents are corrupt.")
+        }
+        return fixes
+    }
+}
+
+struct VerificationSummary: Equatable {
+    var contentDifferences = 0
+    var permissionDifferences = 0
+    var metadataDifferences = 0
+    var destinationOnlyItems = 0
 }
 
 enum RsyncOutputParser {
@@ -365,6 +424,64 @@ enum RsyncOutputParser {
         var parser = Parser()
         output.enumerateLines { line, _ in parser.consume(line) }
         return parser.summary
+    }
+
+    static func parseVerification(url: URL) -> VerificationSummary {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return VerificationSummary() }
+        defer { try? handle.close() }
+
+        var parser = VerificationParser()
+        var pending = Data()
+        while true {
+            let chunk = (try? handle.read(upToCount: 64 * 1_024)) ?? nil
+            guard let chunk, !chunk.isEmpty else { break }
+            pending.append(chunk)
+            while let newline = pending.firstIndex(of: 0x0A) {
+                parser.consume(String(decoding: pending[..<newline], as: UTF8.self))
+                pending.removeSubrange(...newline)
+            }
+        }
+        if !pending.isEmpty { parser.consume(String(decoding: pending, as: UTF8.self)) }
+        return parser.summary
+    }
+
+    static func parseVerification(_ output: String) -> VerificationSummary {
+        var parser = VerificationParser()
+        output.enumerateLines { line, _ in parser.consume(line) }
+        return parser.summary
+    }
+
+    private struct VerificationParser {
+        var summary = VerificationSummary()
+
+        mutating func consume(_ rawLine: String) {
+            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            if line.hasPrefix("*deleting ") {
+                summary.destinationOnlyItems += 1
+                return
+            }
+            guard line.count >= 9 else { return }
+            let code = Array(line.prefix(9))
+            guard code.count == 9,
+                  "<>ch.".contains(code[0]),
+                  "fLDSd".contains(code[1]) else { return }
+
+            // A transfer/update marker means rsync's checksum comparison found file
+            // content or a link target that must be recreated. Dot-prefixed entries are
+            // metadata-only changes and must never be reported as corrupt file content.
+            if code[0] != "." {
+                summary.contentDifferences += 1
+                return
+            }
+
+            let attributeChanges = code.indices.dropFirst(2).filter { code[$0] != "." && code[$0] != " " }
+            guard !attributeChanges.isEmpty else { return }
+            if attributeChanges.allSatisfy({ $0 == 5 && code[$0] == "p" }) {
+                summary.permissionDifferences += 1
+            } else {
+                summary.metadataDifferences += 1
+            }
+        }
     }
 
     private struct Parser {

@@ -149,6 +149,7 @@ struct SyncJob: Codable, Identifiable, Equatable {
     var archiveReplacedFiles: Bool?
     var archiveRetentionCount: Int?
     var verifyAfterSync: Bool?
+    var verifyPermissions: Bool?
     var runWhenVolumeMounts: Bool?
     var realtimePausedUntil: Date?
     var lastVerificationAt: Date?
@@ -159,6 +160,9 @@ extension SyncJob {
     var keepsVersionedArchive: Bool { archiveReplacedFiles ?? false }
     var archiveVersionLimit: Int { max(1, archiveRetentionCount ?? 5) }
     var verifiesAfterSync: Bool { verifyAfterSync ?? false }
+    var verifiesPermissions: Bool {
+        verifyPermissions ?? (source.kind != .network && destination.kind != .network)
+    }
     var runsWhenVolumeMounts: Bool { runWhenVolumeMounts ?? false }
 
     func realtimeIsPaused(at date: Date = Date()) -> Bool {
@@ -180,6 +184,20 @@ struct VerificationReport: Codable, Equatable {
     let verifiedAt: Date
     let matches: Bool
     let message: String
+    var contentDifferences: Int? = nil
+    var permissionDifferences: Int? = nil
+    var metadataDifferences: Int? = nil
+    var destinationOnlyItems: Int? = nil
+    var permissionVerificationEnabled: Bool? = nil
+    var potentialFixes: [String]? = nil
+    var logPath: String? = nil
+
+    var fileContentMatches: Bool {
+        guard let contentDifferences else { return matches }
+        return contentDifferences == 0 && (destinationOnlyItems ?? 0) == 0
+    }
+
+    var hasDetailedResults: Bool { contentDifferences != nil }
 }
 
 enum RunTrigger: String, Codable, CaseIterable {
@@ -207,6 +225,16 @@ struct RunRecord: Codable, Identifiable, Equatable {
     var trigger: RunTrigger? = nil
 
     var duration: TimeInterval { endedAt.timeIntervalSince(startedAt) }
+}
+
+struct ActiveSyncSession: Identifiable, Equatable {
+    let jobID: UUID
+    let jobName: String
+    let startedAt: Date
+    let logPath: String
+    let dryRun: Bool
+
+    var id: UUID { jobID }
 }
 
 enum SyncError: LocalizedError {

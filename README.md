@@ -20,7 +20,7 @@ It is inspired by the lightweight native feel of [Syncthing for macOS](https://g
 - Preview/dry runs before changing files
 - Configurable concurrent run limits, exponential retry backoff, and run-on-volume-mount jobs
 - Pause/resume controls for individual real-time watchers
-- Job cancellation, searchable persisted history, transfer summaries, and plain-text logs
+- Job cancellation, live transfer output, searchable persisted history, transfer summaries, and plain-text logs
 - Configurable history retention with per-entry, per-job, and full cleanup controls
 - Optional checksum verification after syncs or on demand
 - Optional versioned copies of replaced/deleted files with retention and item-level restore
@@ -32,6 +32,8 @@ It is inspired by the lightweight native feel of [Syncthing for macOS](https://g
 Project Sync deliberately does not implement remote-to-remote transfers or automatic NAS mounting. Mount SMB/AFP/NFS shares in Finder first. SSH jobs use your existing key-based SSH setup and do not display password prompts.
 
 Real-time jobs use macOS FSEvents, run once when watching starts to catch up, and then start a sync after file activity has been quiet for two seconds. If more changes arrive during a sync, one follow-up run is queued. Like timed schedules, real-time watching operates while Project Sync is running; enable launch at login for unattended use. Remote SSH sources cannot be watched without software running on the remote machine, but local and mounted-NAS sources can sync to remote destinations in real time.
+
+The **Developer projects** exclusion preset applies common generated-dependency, cache, and build-output patterns at every folder depth. It intentionally keeps source-control history, lockfiles, and local environment files; those have separate optional presets so a complete private backup remains the default.
 
 ## Run from source
 

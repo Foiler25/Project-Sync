@@ -30,6 +30,7 @@ final class JobStore: ObservableObject {
     @Published private(set) var watchingJobIDs: Set<UUID> = []
     @Published private(set) var queuedJobIDs: Set<UUID> = []
     @Published private(set) var verifyingJobIDs: Set<UUID> = []
+    @Published private(set) var activeSyncSessions: [UUID: ActiveSyncSession] = [:]
     @Published private(set) var maximumConcurrentRuns: Int
     @Published private(set) var retryLimit: Int
     @Published private(set) var retryBaseDelaySeconds: Int
@@ -206,7 +207,19 @@ final class JobStore: ObservableObject {
 
         tasks[id] = Task { [weak self] in
             do {
-                var record = try await runner.run(job: job, dryRun: dryRun, processBox: box)
+                var record = try await runner.run(
+                    job: job,
+                    dryRun: dryRun,
+                    processBox: box
+                ) { [weak self] logURL, startedAt in
+                    self?.activeSyncSessions[id] = ActiveSyncSession(
+                        jobID: id,
+                        jobName: job.name,
+                        startedAt: startedAt,
+                        logPath: logURL.path,
+                        dryRun: dryRun
+                    )
+                }
                 record.trigger = trigger
                 guard let self else { return }
                 self.finish(record, attempt: attempt)
@@ -272,7 +285,7 @@ final class JobStore: ObservableObject {
             state: state,
             dryRun: false,
             message: report.message,
-            logPath: ""
+            logPath: report.logPath ?? ""
         )
         record.verification = report
         record.trigger = .verification
@@ -348,6 +361,8 @@ final class JobStore: ObservableObject {
     func nextRun(for job: SyncJob) -> Date? { nextScheduledRuns[job.id] }
 
     func isWatching(_ job: SyncJob) -> Bool { watchingJobIDs.contains(job.id) }
+
+    func activeSync(for id: UUID) -> ActiveSyncSession? { activeSyncSessions[id] }
 
     func setHistoryLimit(_ limit: Int) {
         guard Self.historyLimitOptions.contains(limit) else { return }
@@ -459,6 +474,12 @@ final class JobStore: ObservableObject {
     func dismissMessage(for id: UUID) {
         guard job(withID: id)?.lastMessage != nil else { return }
         updateJob(id) { $0.lastMessage = nil }
+        save()
+    }
+
+    func setPermissionVerification(_ enabled: Bool, for id: UUID) {
+        guard job(withID: id) != nil else { return }
+        updateJob(id) { $0.verifyPermissions = enabled }
         save()
     }
 
@@ -581,6 +602,7 @@ final class JobStore: ObservableObject {
 
     private func finish(_ record: RunRecord, attempt: Int) {
         runningJobIDs.remove(record.jobID)
+        activeSyncSessions[record.jobID] = nil
         tasks[record.jobID] = nil
         processBoxes[record.jobID] = nil
         history.insert(record, at: 0)

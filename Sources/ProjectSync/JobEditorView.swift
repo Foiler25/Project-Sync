@@ -1,6 +1,39 @@
 import AppKit
 import SwiftUI
 
+enum ExclusionPresets {
+    static let javascript = [
+        "node_modules/", "bower_components/", ".npm/", ".pnpm-store/", ".yarn/cache/",
+        ".next/", ".nuxt/", ".svelte-kit/", ".turbo/", ".parcel-cache/", "coverage/", "dist/"
+    ]
+    static let swiftAndXcode = [".build/", "DerivedData/", "xcuserdata/", "*.xcuserstate"]
+    static let python = [
+        "__pycache__/", "*.py[cod]", ".pytest_cache/", ".mypy_cache/", ".ruff_cache/",
+        ".tox/", ".nox/", ".venv/", "venv/"
+    ]
+    static let rust = ["target/"]
+    static let embeddedAndPlatformIO = [".pio/"]
+    static let javaAndKotlin = [".gradle/", "build/", "out/"]
+    static let dotNet = ["bin/", "obj/", ".vs/", "TestResults/"]
+    static let nativeBuilds = ["CMakeFiles/", "CMakeCache.txt", "cmake-build-*/"]
+    static let ruby = [".bundle/", "vendor/bundle/"]
+    static let dartAndFlutter = [".dart_tool/", ".flutter-plugins", ".flutter-plugins-dependencies"]
+    static let generalCaches = [".cache/", "tmp/", "temp/", "*.tmp"]
+    static let macOSClutter = [".DS_Store", ".Trash/", ".Spotlight-V100/", ".fseventsd/"]
+    static let localSecrets = [".env", ".env.local", ".env.*.local"]
+    static let sourceControlMetadata = [".git/", ".hg/", ".svn/"]
+
+    static let developerProjects = combined([
+        javascript, swiftAndXcode, python, rust, embeddedAndPlatformIO, javaAndKotlin, dotNet,
+        nativeBuilds, ruby, dartAndFlutter, generalCaches
+    ])
+
+    private static func combined(_ groups: [[String]]) -> [String] {
+        var seen = Set<String>()
+        return groups.flatMap { $0 }.filter { seen.insert($0).inserted }
+    }
+}
+
 struct JobEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var job: SyncJob
@@ -52,18 +85,18 @@ struct JobEditorView: View {
                             .textFieldStyle(.roundedBorder)
                     }
 
+                    HStack(alignment: .top, spacing: 18) {
+                        EndpointEditor(title: "SOURCE", endpoint: $job.source)
+                        Image(systemName: "arrow.right").font(.title2).foregroundStyle(.secondary).padding(.top, 96)
+                        EndpointEditor(title: "DESTINATION", endpoint: $job.destination)
+                    }
+
                     FormSection(title: "Notes", subtitle: "Optional context about what this sync protects or how it should be used.") {
                         TextEditor(text: optionalStringBinding(\.notes))
                             .frame(height: 72)
                             .scrollContentBackground(.hidden)
                             .padding(7)
                             .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 7))
-                    }
-
-                    HStack(alignment: .top, spacing: 18) {
-                        EndpointEditor(title: "SOURCE", endpoint: $job.source)
-                        Image(systemName: "arrow.right").font(.title2).foregroundStyle(.secondary).padding(.top, 96)
-                        EndpointEditor(title: "DESTINATION", endpoint: $job.destination)
                     }
 
                     FormSection(title: "Transfer mode", subtitle: job.mode.detail) {
@@ -91,6 +124,15 @@ struct JobEditorView: View {
                     FormSection(title: "Options", subtitle: "Patterns use rsync exclude syntax, one per line.") {
                         Toggle("Preserve macOS extended attributes", isOn: $job.preserveExtendedAttributes)
                         Toggle("Verify after every successful sync", isOn: optionalBoolBinding(\.verifyAfterSync))
+                        Toggle("Ignore permission differences during verification", isOn: Binding(
+                            get: { !job.verifiesPermissions },
+                            set: { job.verifyPermissions = !$0 }
+                        ))
+                        Text(job.verifiesPermissions
+                             ? "File contents and POSIX permissions must both match."
+                             : "File contents are always checksum-verified. Only permission differences are reported separately and ignored.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                         Toggle("Run when a source or destination volume mounts", isOn: optionalBoolBinding(\.runWhenVolumeMounts))
                             .disabled(!volumeMountRunAvailable)
                         if !volumeMountRunAvailable {
@@ -121,18 +163,36 @@ struct JobEditorView: View {
                                 .font(.subheadline.weight(.medium))
                             Spacer()
                             Menu("Add Preset") {
-                                Button("Developer projects") {
-                                    addExclusions([".git", "node_modules", ".build"])
+                                Button("Developer projects (Recommended)") {
+                                    addExclusions(ExclusionPresets.developerProjects)
                                 }
                                 Button("macOS clutter") {
-                                    addExclusions([".DS_Store", ".Trash", ".Spotlight-V100", ".fseventsd"])
+                                    addExclusions(ExclusionPresets.macOSClutter)
                                 }
-                                Button("Caches") {
-                                    addExclusions(["Library/Caches", "*.cache", "DerivedData"])
+                                Divider()
+                                Menu("Language-specific") {
+                                    Button("JavaScript & TypeScript") { addExclusions(ExclusionPresets.javascript) }
+                                    Button("Swift & Xcode") { addExclusions(ExclusionPresets.swiftAndXcode) }
+                                    Button("Python") { addExclusions(ExclusionPresets.python) }
+                                    Button("Rust") { addExclusions(ExclusionPresets.rust) }
+                                    Button("Embedded & PlatformIO") { addExclusions(ExclusionPresets.embeddedAndPlatformIO) }
+                                    Button("Java & Kotlin") { addExclusions(ExclusionPresets.javaAndKotlin) }
+                                    Button(".NET") { addExclusions(ExclusionPresets.dotNet) }
+                                    Button("C & C++") { addExclusions(ExclusionPresets.nativeBuilds) }
+                                    Button("Ruby") { addExclusions(ExclusionPresets.ruby) }
+                                    Button("Dart & Flutter") { addExclusions(ExclusionPresets.dartAndFlutter) }
+                                }
+                                Menu("Optional exclusions") {
+                                    Button("General caches & temporary files") { addExclusions(ExclusionPresets.generalCaches) }
+                                    Button("Local environment secrets") { addExclusions(ExclusionPresets.localSecrets) }
+                                    Button("Source-control metadata") { addExclusions(ExclusionPresets.sourceControlMetadata) }
                                 }
                             }
                             .menuStyle(.borderlessButton)
                         }
+                        Text("Developer projects combines common dependency, cache, and build-output patterns for all supported ecosystems. It keeps source files, lockfiles, .git history, and local environment files unless you add those optional presets.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                         TextEditor(text: Binding(
                             get: { job.exclusions.joined(separator: "\n") },
                             set: { job.exclusions = $0.components(separatedBy: .newlines) }
