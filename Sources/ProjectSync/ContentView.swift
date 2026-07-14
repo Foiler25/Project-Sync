@@ -269,8 +269,8 @@ struct JobDetailView: View {
                     InfoCard(
                         title: "Schedule",
                         value: job.schedule.summary,
-                        detail: store.nextRun(for: job).map { "Next: \($0.formatted(date: .abbreviated, time: .shortened))" } ?? "Runs only when you start it",
-                        symbol: "calendar.badge.clock"
+                        detail: scheduleDetail,
+                        symbol: job.schedule.kind == .realtime ? "eye" : "calendar.badge.clock"
                     )
                 }
 
@@ -300,6 +300,18 @@ struct JobDetailView: View {
             .padding(32)
         }
         .sheet(item: $selectedRecord) { LogView(record: $0) }
+    }
+
+    private var scheduleDetail: String {
+        if job.schedule.kind == .realtime {
+            if !job.enabled { return "Watcher paused" }
+            return store.isWatching(job)
+                ? "Watching the source; changes sync after a 2-second pause"
+                : "Source unavailable; watcher will retry"
+        }
+        return store.nextRun(for: job).map {
+            "Next: \($0.formatted(date: .abbreviated, time: .shortened))"
+        } ?? "Runs only when you start it"
     }
 }
 

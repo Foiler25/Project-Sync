@@ -48,6 +48,7 @@ enum TransferMode: String, Codable, CaseIterable, Identifiable {
 
 enum ScheduleKind: String, Codable, CaseIterable, Identifiable {
     case manual = "Manual"
+    case realtime = "Real-time"
     case hourly = "Hourly"
     case daily = "Daily"
     case weekly = "Weekly"
@@ -67,6 +68,7 @@ struct JobSchedule: Codable, Equatable {
         let time = date.formatted(date: .omitted, time: .shortened)
         switch kind {
         case .manual: return "Manual only"
+        case .realtime: return "When files change"
         case .hourly: return "Hourly at :\(String(format: "%02d", minute))"
         case .daily: return "Every day at \(time)"
         case .weekly:
@@ -78,7 +80,7 @@ struct JobSchedule: Codable, Equatable {
 
     func nextDate(after date: Date, calendar: Calendar = .current) -> Date? {
         switch kind {
-        case .manual:
+        case .manual, .realtime:
             return nil
         case .hourly:
             return calendar.nextDate(
