@@ -5,5 +5,27 @@
     <link>https://github.com/Foiler25/Project-Sync</link>
     <description>Stable updates for Project Sync.</description>
     <language>en</language>
+      <item>
+      <title>Project Sync 1.0.0</title>
+      <pubDate>Tue, 14 Jul 2026 15:19:41 +0000</pubDate>
+      <sparkle:version>4</sparkle:version>
+      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+<h3>Project Sync 1.0.0</h3>
+<h4>New</h4>
+<ul>
+<li>First public release of Project Sync for scheduled one-way syncs between Mac folders, mounted network drives, and SSH-accessible machines.</li>
+<li>Choose Backup mode to copy and update files without removing existing destination files, or Mirror mode when the destination should exactly match the source.</li>
+<li>Preview changes before syncing, review plain-text logs and history, and cancel a running job when needed.</li>
+<li>Schedule jobs manually, hourly, daily, weekly, or in response to changes in local and mounted-network folders.</li>
+<li>Check for updates from the app menu, menu-bar menu, or Settings. Settings also lets you choose whether Project Sync checks for and downloads updates automatically.</li>
+</ul>
+<h4>Install &amp; update</h4>
+<p>Existing users can use <strong>Check for Updates…</strong> in Project Sync.</p>
+<p>New users: download <code>Project-Sync-1.0.0.dmg</code>, open it, and drag Project Sync to Applications.</p>
+      ]]></description>
+      <enclosure url="https://github.com/Foiler25/Project-Sync/releases/download/v1.0.0/Project-Sync-1.0.0.dmg" sparkle:edSignature="5vj9yoDQ49JfOrFuGXdmVtz41Ayrnymp6ns2yCSRb9M/06y8QoST/UGOyzv+ANai5fcimjBRTtK7mtL0J/aFCQ==" length="3383972" type="application/octet-stream" />
+    </item>
   </channel>
 </rss>
