@@ -17,15 +17,29 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.2</string>
+    <string>1.0.0</string>
     <key>CFBundleVersion</key>
-    <string>3</string>
+    <string>4</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>LSUIElement</key>
     <false/>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>SUFeedURL</key>
+    <string>https://raw.githubusercontent.com/Foiler25/Project-Sync/main/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>UW4n9i+dj3NJQG2HovVjfrHpEGBdJBpSDx+EAQWt/WA=</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+    <key>SUAllowsAutomaticUpdates</key>
+    <true/>
+    <key>SUScheduledCheckInterval</key>
+    <integer>86400</integer>
+    <key>SUEnableInstallerLauncherService</key>
+    <false/>
+    <key>SUEnableDownloaderService</key>
+    <false/>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2026. Personal use.</string>
 </dict>

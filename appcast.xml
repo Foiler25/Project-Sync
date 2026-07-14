@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Project Sync Updates</title>
+    <link>https://github.com/Foiler25/Project-Sync</link>
+    <description>Stable updates for Project Sync.</description>
+    <language>en</language>
+  </channel>
+</rss>

@@ -3,3 +3,8 @@ build/
 .DS_Store
 *.xcuserstate
 xcuserdata/
+*.dmg
+.release-metadata
+.release-notes-draft.md
+RELEASE_NOTES.md
+keyfile.txt

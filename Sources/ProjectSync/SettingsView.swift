@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var store: JobStore
+    @EnvironmentObject private var updates: UpdateManager
     @State private var launchAtLogin = false
     @State private var errorMessage: String?
 
@@ -26,6 +27,25 @@ struct SettingsView: View {
             Section("Data") {
                 LabeledContent("Configuration") { Text(store.applicationSupportURL.path).font(.caption).textSelection(.enabled) }
                 Button("Show Project Sync Data") { store.reveal(store.applicationSupportURL.path) }
+            }
+            Section("Updates") {
+                Toggle("Automatically check for updates", isOn: Binding(
+                    get: { updates.automaticallyChecksForUpdates },
+                    set: { updates.setAutomaticallyChecksForUpdates($0) }
+                ))
+                Toggle("Automatically download updates", isOn: Binding(
+                    get: { updates.automaticallyDownloadsUpdates },
+                    set: { updates.setAutomaticallyDownloadsUpdates($0) }
+                ))
+                .disabled(!updates.automaticallyChecksForUpdates)
+                HStack {
+                    Text(updates.versionDescription)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Check Now…") { updates.checkForUpdates() }
+                        .disabled(!updates.canCheckForUpdates)
+                }
             }
             Section("Transfer engine") {
                 LabeledContent("Local and NAS", value: "macOS rsync")
