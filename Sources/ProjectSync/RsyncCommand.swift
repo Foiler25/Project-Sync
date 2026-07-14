@@ -18,6 +18,9 @@ struct RsyncCommand: Equatable {
         guard job.source != job.destination else {
             throw SyncError.invalidConfiguration("Source and destination must be different.")
         }
+        guard !localPathsOverlap(job) else {
+            throw SyncError.invalidConfiguration("Source and destination folders cannot contain one another.")
+        }
 
         var arguments = ["-a", "-v", "--human-readable", "--itemize-changes", "--partial"]
         if job.preserveExtendedAttributes { arguments.append("-E") }
@@ -36,6 +39,15 @@ struct RsyncCommand: Equatable {
         arguments.append(endpointArgument(job.source, isSource: true))
         arguments.append(endpointArgument(job.destination, isSource: false))
         return RsyncCommand(executable: "/usr/bin/rsync", arguments: arguments)
+    }
+
+    static func localPathsOverlap(_ job: SyncJob) -> Bool {
+        guard job.source.kind != .remote, job.destination.kind != .remote else { return false }
+        let source = URL(fileURLWithPath: job.source.path).standardizedFileURL.path
+        let destination = URL(fileURLWithPath: job.destination.path).standardizedFileURL.path
+        return source == destination ||
+            destination.hasPrefix(source.withTrailingSlash) ||
+            source.hasPrefix(destination.withTrailingSlash)
     }
 
     private static func validate(_ endpoint: SyncEndpoint, role: String) throws {
@@ -91,4 +103,8 @@ struct RsyncCommand: Equatable {
         if value.unicodeScalars.allSatisfy(safe.contains) { return value }
         return "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
+}
+
+private extension String {
+    var withTrailingSlash: String { hasSuffix("/") ? self : self + "/" }
 }

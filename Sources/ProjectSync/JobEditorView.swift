@@ -14,9 +14,23 @@ struct JobEditorView: View {
     }
 
     private var canSave: Bool {
-        !job.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        endpointIsComplete(job.source) && endpointIsComplete(job.destination) &&
-        job.source != job.destination
+        saveIssue == nil
+    }
+
+    private var saveIssue: String? {
+        if job.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Give this sync a name to continue."
+        }
+        if !endpointIsComplete(job.source) || !endpointIsComplete(job.destination) {
+            return "Complete both endpoints to continue."
+        }
+        if job.source == job.destination {
+            return "Source and destination must be different."
+        }
+        if RsyncCommand.localPathsOverlap(job) {
+            return "Source and destination folders cannot contain one another."
+        }
+        return nil
     }
 
     var body: some View {
@@ -58,7 +72,12 @@ struct JobEditorView: View {
                     }
 
                     FormSection(title: "Schedule", subtitle: "Schedules run while Project Sync is open. Enable launch at login in Settings for unattended jobs.") {
-                        ScheduleEditor(schedule: $job.schedule)
+                        ScheduleEditor(schedule: $job.schedule, sourceKind: job.source.kind)
+                        if job.source.kind == .remote {
+                            Text("Real-time watching is available for Mac folders and mounted network drives. Remote SSH sources still support timed schedules.")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     }
 
                     FormSection(title: "Options", subtitle: "Patterns use rsync exclude syntax, one per line.") {
@@ -79,7 +98,7 @@ struct JobEditorView: View {
 
             Divider()
             HStack {
-                Text(canSave ? "" : "Complete both endpoints to continue.").font(.caption).foregroundStyle(.secondary)
+                Text(saveIssue ?? "").font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button(isNew ? "Create Sync" : "Save Changes") {
@@ -175,11 +194,14 @@ private struct EndpointEditor: View {
 
 private struct ScheduleEditor: View {
     @Binding var schedule: JobSchedule
+    let sourceKind: EndpointKind
 
     var body: some View {
         HStack {
             Picker("Frequency", selection: $schedule.kind) {
-                ForEach(ScheduleKind.allCases) { Text($0.rawValue).tag($0) }
+                ForEach(ScheduleKind.allCases.filter { $0 != .realtime || sourceKind != .remote }) {
+                    Text($0.rawValue).tag($0)
+                }
             }
             .frame(width: 150)
 
@@ -203,6 +225,11 @@ private struct ScheduleEditor: View {
                     .frame(width: 160)
             }
             Spacer()
+        }
+        .onChange(of: sourceKind) { _, newKind in
+            if newKind == .remote && schedule.kind == .realtime {
+                schedule.kind = .manual
+            }
         }
     }
 

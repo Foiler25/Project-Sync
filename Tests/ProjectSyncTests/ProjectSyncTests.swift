@@ -43,6 +43,71 @@ final class ProjectSyncTests: XCTestCase {
         XCTAssertEqual(parts.minute, 45)
     }
 
+    func testRealtimeScheduleHasNoClockDate() {
+        let schedule = JobSchedule(kind: .realtime)
+        XCTAssertEqual(schedule.summary, "When files change")
+        XCTAssertNil(schedule.nextDate(after: Date()))
+    }
+
+    func testFileWatcherReportsNestedChange() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let nested = root.appendingPathComponent("nested", isDirectory: true)
+        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let changed = expectation(description: "FSEvents reports a nested file change")
+        changed.assertForOverFulfill = false
+        let watcher = FileSystemWatcher(path: root.path) { changed.fulfill() }
+        defer { watcher.stop() }
+
+        XCTAssertTrue(watcher.start())
+        try Data("changed".utf8).write(to: nested.appendingPathComponent("file.txt"))
+        wait(for: [changed], timeout: 5)
+    }
+
+    @MainActor
+    func testRealtimeJobCopiesAChangedFileEndToEnd() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let source = root.appendingPathComponent("source", isDirectory: true)
+        let destination = root.appendingPathComponent("destination", isDirectory: true)
+        let support = root.appendingPathComponent("support", isDirectory: true)
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+
+        let store = JobStore(applicationSupportURL: support)
+        var job = SyncJob()
+        job.name = "Real-time Integration Test"
+        job.source = SyncEndpoint(kind: .local, path: source.path)
+        job.destination = SyncEndpoint(kind: .local, path: destination.path)
+        job.schedule.kind = .realtime
+        job.exclusions = []
+        job.preserveExtendedAttributes = false
+        store.upsert(job)
+        defer {
+            store.delete(job.id)
+            try? FileManager.default.removeItem(at: root)
+        }
+
+        try Data("watched".utf8).write(to: source.appendingPathComponent("watched.txt"))
+        let copiedURL = destination.appendingPathComponent("watched.txt")
+        let deadline = Date().addingTimeInterval(8)
+        while !FileManager.default.fileExists(atPath: copiedURL.path), Date() < deadline {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: copiedURL.path))
+        XCTAssertEqual(try String(contentsOf: copiedURL, encoding: .utf8), "watched")
+    }
+
+    func testNestedLocalDestinationIsRejected() {
+        var job = localJob(mode: .backup)
+        job.source.path = NSTemporaryDirectory()
+        job.destination.path = URL(fileURLWithPath: job.source.path)
+            .appendingPathComponent("nested-backup")
+            .path
+        XCTAssertThrowsError(try RsyncCommand.build(for: job))
+    }
+
     func testRunnerCopiesAFileEndToEnd() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         let source = root.appendingPathComponent("source", isDirectory: true)
@@ -90,7 +155,7 @@ final class ProjectSyncTests: XCTestCase {
     private func localJob(mode: TransferMode) -> SyncJob {
         var job = SyncJob()
         job.source = SyncEndpoint(kind: .local, path: NSTemporaryDirectory())
-        job.destination = SyncEndpoint(kind: .network, path: NSTemporaryDirectory() + "project-sync-output")
+        job.destination = SyncEndpoint(kind: .network, path: "/Users/Shared/project-sync-output")
         job.mode = mode
         return job
     }

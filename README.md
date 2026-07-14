@@ -16,13 +16,15 @@ It is inspired by the lightweight native feel of [Syncthing for macOS](https://g
 - Mac → NAS, NAS → Mac, Mac → Mac, and local ↔ SSH jobs
 - Backup mode (copy/update without deleting old destination files)
 - Mirror mode (destination exactly follows source, including deletions)
-- Manual, hourly, daily, and weekly schedules
+- Real-time file watching for Mac folders and mounted NAS sources, plus manual, hourly, daily, and weekly schedules
 - Preview/dry runs before changing files
 - Job cancellation, persisted history, and plain-text logs
 - Exclusion patterns and macOS extended-attribute preservation
 - Optional launch at login for unattended schedules
 
 Project Sync deliberately does not implement remote-to-remote transfers or automatic NAS mounting. Mount SMB/AFP/NFS shares in Finder first. SSH jobs use your existing key-based SSH setup and do not display password prompts.
+
+Real-time jobs use macOS FSEvents, run once when watching starts to catch up, and then start a sync after file activity has been quiet for two seconds. If more changes arrive during a sync, one follow-up run is queued. Like timed schedules, real-time watching operates while Project Sync is running; enable launch at login for unattended use. Remote SSH sources cannot be watched without software running on the remote machine, but local and mounted-NAS sources can sync to remote destinations in real time.
 
 ## Run from source
 
