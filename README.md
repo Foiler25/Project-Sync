@@ -18,8 +18,15 @@ It is inspired by the lightweight native feel of [Syncthing for macOS](https://g
 - Mirror mode (destination exactly follows source, including deletions)
 - Real-time file watching for Mac folders and mounted NAS sources, plus manual, hourly, daily, and weekly schedules
 - Preview/dry runs before changing files
-- Job cancellation, persisted history, and plain-text logs
-- Exclusion patterns and macOS extended-attribute preservation
+- Configurable concurrent run limits, exponential retry backoff, and run-on-volume-mount jobs
+- Pause/resume controls for individual real-time watchers
+- Job cancellation, searchable persisted history, transfer summaries, and plain-text logs
+- Configurable history retention with per-entry, per-job, and full cleanup controls
+- Optional checksum verification after syncs or on demand
+- Optional versioned copies of replaced/deleted files with retention and item-level restore
+- Exclusion presets, custom exclusion patterns, job duplication, and per-job notes
+- Configurable macOS notifications, stale-backup reminders, and privacy-redacted diagnostic export
+- macOS extended-attribute preservation
 - Optional launch at login for unattended schedules
 
 Project Sync deliberately does not implement remote-to-remote transfers or automatic NAS mounting. Mount SMB/AFP/NFS shares in Finder first. SSH jobs use your existing key-based SSH setup and do not display password prompts.
@@ -78,7 +85,7 @@ The first Sparkle-enabled build must be installed manually. Releases after that 
 1. Start with **Backup** mode.
 2. Use **Preview Changes** and read the log.
 3. Switch to **Mirror** only when destination deletions are desired.
-4. Keep a separate backup of important data; synchronization is not versioned archival storage.
+4. Optional versioned copies can help recover replaced or deleted destination items, but they are not full snapshots. Keep a separate backup of important data.
 
 Jobs and history are stored under `~/Library/Application Support/Project Sync`. Each run writes a log in the `Logs` subfolder.
 

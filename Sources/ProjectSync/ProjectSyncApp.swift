@@ -3,8 +3,14 @@ import SwiftUI
 
 @main
 struct ProjectSyncApp: App {
-    @StateObject private var store = JobStore()
-    @StateObject private var updates = UpdateManager()
+    @StateObject private var store: JobStore
+    @StateObject private var updates: UpdateManager
+
+    init() {
+        SyncStartNotifier.shared.start()
+        _store = StateObject(wrappedValue: JobStore())
+        _updates = StateObject(wrappedValue: UpdateManager())
+    }
 
     var body: some Scene {
         WindowGroup("Project Sync") {
@@ -20,7 +26,12 @@ struct ProjectSyncApp: App {
                 .environmentObject(store)
                 .environmentObject(updates)
         } label: {
-            Label("Project Sync", systemImage: store.activeCount > 0 ? "arrow.triangle.2.circlepath" : "point.3.connected.trianglepath.dotted")
+            Label(
+                "Project Sync",
+                systemImage: (store.activeCount > 0 || !store.queuedJobIDs.isEmpty)
+                    ? "arrow.triangle.2.circlepath"
+                    : "point.3.connected.trianglepath.dotted"
+            )
         }
 
         Settings {
@@ -48,14 +59,14 @@ struct MenuBarContent: View {
         } else {
             ForEach(store.jobs) { job in
                 Button {
-                    store.runningJobIDs.contains(job.id) ? store.cancel(job.id) : store.run(job.id)
+                    isBusy(job) ? store.cancel(job.id) : store.run(job.id)
                 } label: {
                     Label(
-                        store.runningJobIDs.contains(job.id) ? "Stop \(job.name)" : "Run \(job.name)",
-                        systemImage: store.runningJobIDs.contains(job.id) ? "stop.fill" : job.lastState.symbol
+                        menuTitle(for: job),
+                        systemImage: menuSymbol(for: job)
                     )
                 }
-                .disabled(!job.enabled && !store.runningJobIDs.contains(job.id))
+                .disabled(!job.enabled && !isBusy(job))
             }
             Divider()
             Button("Run All") { store.runAll() }
@@ -71,5 +82,26 @@ struct MenuBarContent: View {
         SettingsLink { Text("Settings…") }
         Divider()
         Button("Quit Project Sync") { NSApp.terminate(nil) }
+    }
+
+    private func isBusy(_ job: SyncJob) -> Bool {
+        store.runningJobIDs.contains(job.id) ||
+            store.verifyingJobIDs.contains(job.id) ||
+            store.queuedJobIDs.contains(job.id)
+    }
+
+    private func menuTitle(for job: SyncJob) -> String {
+        if store.queuedJobIDs.contains(job.id) { return "Remove \(job.name) from Queue" }
+        if store.verifyingJobIDs.contains(job.id) { return "Stop Verifying \(job.name)" }
+        if store.runningJobIDs.contains(job.id) { return "Stop \(job.name)" }
+        return "Run \(job.name)"
+    }
+
+    private func menuSymbol(for job: SyncJob) -> String {
+        if store.queuedJobIDs.contains(job.id) { return "hourglass" }
+        if store.runningJobIDs.contains(job.id) || store.verifyingJobIDs.contains(job.id) {
+            return "stop.fill"
+        }
+        return job.lastState.symbol
     }
 }

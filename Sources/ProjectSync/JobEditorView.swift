@@ -52,6 +52,14 @@ struct JobEditorView: View {
                             .textFieldStyle(.roundedBorder)
                     }
 
+                    FormSection(title: "Notes", subtitle: "Optional context about what this sync protects or how it should be used.") {
+                        TextEditor(text: optionalStringBinding(\.notes))
+                            .frame(height: 72)
+                            .scrollContentBackground(.hidden)
+                            .padding(7)
+                            .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 7))
+                    }
+
                     HStack(alignment: .top, spacing: 18) {
                         EndpointEditor(title: "SOURCE", endpoint: $job.source)
                         Image(systemName: "arrow.right").font(.title2).foregroundStyle(.secondary).padding(.top, 96)
@@ -82,6 +90,49 @@ struct JobEditorView: View {
 
                     FormSection(title: "Options", subtitle: "Patterns use rsync exclude syntax, one per line.") {
                         Toggle("Preserve macOS extended attributes", isOn: $job.preserveExtendedAttributes)
+                        Toggle("Verify after every successful sync", isOn: optionalBoolBinding(\.verifyAfterSync))
+                        Toggle("Run when a source or destination volume mounts", isOn: optionalBoolBinding(\.runWhenVolumeMounts))
+                            .disabled(!volumeMountRunAvailable)
+                        if !volumeMountRunAvailable {
+                            Text("Volume-mount runs require at least one Mac folder or mounted network drive endpoint.")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Toggle("Keep versioned copies of replaced and deleted files", isOn: optionalBoolBinding(\.archiveReplacedFiles))
+                                .disabled(job.destination.kind == .remote)
+                            if job.destination.kind == .remote {
+                                Text("Versioned archives require a Mac folder or mounted network drive as the destination.")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            } else if job.keepsVersionedArchive {
+                                Picker("Keep archive versions", selection: optionalIntBinding(\.archiveRetentionCount, defaultValue: 5)) {
+                                    ForEach([1, 3, 5, 10, 20], id: \.self) { count in
+                                        Text("\(count) version\(count == 1 ? "" : "s")").tag(count)
+                                    }
+                                }
+                                .frame(maxWidth: 260, alignment: .leading)
+                            }
+                        }
+
+                        HStack {
+                            Text("Exclude patterns")
+                                .font(.subheadline.weight(.medium))
+                            Spacer()
+                            Menu("Add Preset") {
+                                Button("Developer projects") {
+                                    addExclusions([".git", "node_modules", ".build"])
+                                }
+                                Button("macOS clutter") {
+                                    addExclusions([".DS_Store", ".Trash", ".Spotlight-V100", ".fseventsd"])
+                                }
+                                Button("Caches") {
+                                    addExclusions(["Library/Caches", "*.cache", "DerivedData"])
+                                }
+                            }
+                            .menuStyle(.borderlessButton)
+                        }
                         TextEditor(text: Binding(
                             get: { job.exclusions.joined(separator: "\n") },
                             set: { job.exclusions = $0.components(separatedBy: .newlines) }
@@ -103,6 +154,9 @@ struct JobEditorView: View {
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button(isNew ? "Create Sync" : "Save Changes") {
                     job.name = job.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                    job.notes = job.notes?.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if job.notes?.isEmpty == true { job.notes = nil }
+                    job.exclusions = normalizedExclusions(job.exclusions)
                     job.source.path = NSString(string: job.source.path).expandingTildeInPath
                     job.destination.path = NSString(string: job.destination.path).expandingTildeInPath
                     onSave(job)
@@ -120,6 +174,44 @@ struct JobEditorView: View {
     private func endpointIsComplete(_ endpoint: SyncEndpoint) -> Bool {
         !endpoint.path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         (endpoint.kind != .remote || !endpoint.host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
+
+    private var volumeMountRunAvailable: Bool {
+        job.source.kind != .remote || job.destination.kind != .remote
+    }
+
+    private func optionalStringBinding(_ keyPath: WritableKeyPath<SyncJob, String?>) -> Binding<String> {
+        Binding(
+            get: { job[keyPath: keyPath] ?? "" },
+            set: { job[keyPath: keyPath] = $0.isEmpty ? nil : $0 }
+        )
+    }
+
+    private func optionalBoolBinding(_ keyPath: WritableKeyPath<SyncJob, Bool?>) -> Binding<Bool> {
+        Binding(
+            get: { job[keyPath: keyPath] ?? false },
+            set: { job[keyPath: keyPath] = $0 }
+        )
+    }
+
+    private func optionalIntBinding(_ keyPath: WritableKeyPath<SyncJob, Int?>, defaultValue: Int) -> Binding<Int> {
+        Binding(
+            get: { job[keyPath: keyPath] ?? defaultValue },
+            set: { job[keyPath: keyPath] = $0 }
+        )
+    }
+
+    private func addExclusions(_ patterns: [String]) {
+        job.exclusions = normalizedExclusions(job.exclusions + patterns)
+    }
+
+    private func normalizedExclusions(_ patterns: [String]) -> [String] {
+        var seen = Set<String>()
+        return patterns.compactMap { pattern in
+            let trimmed = pattern.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, seen.insert(trimmed).inserted else { return nil }
+            return trimmed
+        }
     }
 }
 
@@ -199,11 +291,13 @@ private struct ScheduleEditor: View {
     var body: some View {
         HStack {
             Picker("Frequency", selection: $schedule.kind) {
-                ForEach(ScheduleKind.allCases.filter { $0 != .realtime || sourceKind != .remote }) {
-                    Text($0.rawValue).tag($0)
+                ForEach(ScheduleKind.allCases) { kind in
+                    Text(kind.rawValue)
+                        .tag(kind)
+                        .disabled(kind == .realtime && sourceKind == .remote)
                 }
             }
-            .frame(width: 150)
+            .frame(width: 235)
 
             if schedule.kind == .weekly {
                 Picker("Day", selection: $schedule.weekday) {

@@ -8,7 +8,12 @@ struct RsyncCommand: Equatable {
         ([executable] + arguments).map(Self.shellQuoted).joined(separator: " ")
     }
 
-    static func build(for job: SyncJob, dryRun: Bool = false) throws -> RsyncCommand {
+    static func build(
+        for job: SyncJob,
+        dryRun: Bool = false,
+        checksum: Bool = false,
+        archiveDate: Date = Date()
+    ) throws -> RsyncCommand {
         try validate(job.source, role: "source")
         try validate(job.destination, role: "destination")
 
@@ -22,10 +27,22 @@ struct RsyncCommand: Equatable {
             throw SyncError.invalidConfiguration("Source and destination folders cannot contain one another.")
         }
 
-        var arguments = ["-a", "-v", "--human-readable", "--itemize-changes", "--partial"]
+        // Keep byte statistics exact so stored run summaries are not reconstructed from
+        // rounded human-readable values. The UI formats these values for display.
+        var arguments = ["-a", "-v", "--itemize-changes", "--partial", "--stats"]
         if job.preserveExtendedAttributes { arguments.append("-E") }
         if job.mode == .mirror { arguments.append("--delete") }
         if dryRun { arguments.append("--dry-run") }
+        if checksum { arguments.append("--checksum") }
+
+        // Archive directories live below the destination, so this anchored exclusion also
+        // protects them from a mirror run's --delete processing.
+        if job.keepsVersionedArchive, job.destination.kind != .remote {
+            arguments += ["--exclude", "/.project-sync-archive/"]
+            if !dryRun, let archiveURL = archiveDirectory(for: job, at: archiveDate) {
+                arguments += ["--backup", "--backup-dir=\(archiveURL.path)"]
+            }
+        }
 
         for exclusion in job.exclusions.map({ $0.trimmingCharacters(in: .whitespacesAndNewlines) }).filter({ !$0.isEmpty }) {
             arguments += ["--exclude", exclusion]
@@ -39,6 +56,21 @@ struct RsyncCommand: Equatable {
         arguments.append(endpointArgument(job.source, isSource: true))
         arguments.append(endpointArgument(job.destination, isSource: false))
         return RsyncCommand(executable: "/usr/bin/rsync", arguments: arguments)
+    }
+
+    static func buildVerification(for job: SyncJob) throws -> RsyncCommand {
+        try build(for: job, dryRun: true, checksum: true)
+    }
+
+    /// Returns nil for SSH destinations because rsync's backup directory semantics would
+    /// otherwise create and manage state on a remote host without local restore guarantees.
+    static func archiveDirectory(for job: SyncJob, at date: Date) -> URL? {
+        guard job.keepsVersionedArchive, job.destination.kind != .remote else { return nil }
+        let stamp = archiveTimestampFormatter.string(from: date)
+        return URL(fileURLWithPath: job.destination.path, isDirectory: true)
+            .appendingPathComponent(".project-sync-archive", isDirectory: true)
+            .appendingPathComponent(job.id.uuidString, isDirectory: true)
+            .appendingPathComponent(stamp, isDirectory: true)
     }
 
     static func localPathsOverlap(_ job: SyncJob) -> Bool {
@@ -103,6 +135,12 @@ struct RsyncCommand: Equatable {
         if value.unicodeScalars.allSatisfy(safe.contains) { return value }
         return "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
+
+    private static let archiveTimestampFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
 }
 
 private extension String {

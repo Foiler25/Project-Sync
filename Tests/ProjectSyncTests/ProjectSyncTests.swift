@@ -152,6 +152,54 @@ final class ProjectSyncTests: XCTestCase {
         XCTAssertFalse(preview.text.contains("line 0\n"))
     }
 
+    @MainActor
+    func testHistoryLimitPrunesOldRecordsAndLogs() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let logs = root.appendingPathComponent("Logs", isDirectory: true)
+        try FileManager.default.createDirectory(at: logs, withIntermediateDirectories: true)
+        let suiteName = "ProjectSyncTests.\(UUID().uuidString)"
+        let preferences = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        preferences.set(25, forKey: "historyLimit")
+        defer {
+            preferences.removePersistentDomain(forName: suiteName)
+            try? FileManager.default.removeItem(at: root)
+        }
+
+        let records = try (0..<26).map { index -> RunRecord in
+            let logURL = logs.appendingPathComponent("run-\(index).log")
+            try Data("log \(index)".utf8).write(to: logURL)
+            let date = Date().addingTimeInterval(TimeInterval(-index))
+            return RunRecord(
+                jobID: UUID(),
+                jobName: "History Test",
+                startedAt: date,
+                endedAt: date,
+                state: .succeeded,
+                dryRun: false,
+                message: "Complete",
+                logPath: logURL.path
+            )
+        }
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        try encoder.encode(records).write(to: root.appendingPathComponent("history.json"))
+
+        let store = JobStore(applicationSupportURL: root, preferences: preferences)
+
+        XCTAssertEqual(store.historyLimit, 25)
+        XCTAssertEqual(store.history.count, 25)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: records[25].logPath))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: records[0].logPath))
+
+        store.deleteHistoryRecord(records[0].id)
+        XCTAssertEqual(store.history.count, 24)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: records[0].logPath))
+
+        store.clearHistory()
+        XCTAssertTrue(store.history.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: records[1].logPath))
+    }
+
     private func localJob(mode: TransferMode) -> SyncJob {
         var job = SyncJob()
         job.source = SyncEndpoint(kind: .local, path: NSTemporaryDirectory())

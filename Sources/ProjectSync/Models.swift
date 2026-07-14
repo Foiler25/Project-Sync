@@ -145,6 +145,51 @@ struct SyncJob: Codable, Identifiable, Equatable {
     var lastRunAt: Date?
     var lastState: JobState = .idle
     var lastMessage: String?
+    var notes: String?
+    var archiveReplacedFiles: Bool?
+    var archiveRetentionCount: Int?
+    var verifyAfterSync: Bool?
+    var runWhenVolumeMounts: Bool?
+    var realtimePausedUntil: Date?
+    var lastVerificationAt: Date?
+    var lastVerificationSucceeded: Bool?
+}
+
+extension SyncJob {
+    var keepsVersionedArchive: Bool { archiveReplacedFiles ?? false }
+    var archiveVersionLimit: Int { max(1, archiveRetentionCount ?? 5) }
+    var verifiesAfterSync: Bool { verifyAfterSync ?? false }
+    var runsWhenVolumeMounts: Bool { runWhenVolumeMounts ?? false }
+
+    func realtimeIsPaused(at date: Date = Date()) -> Bool {
+        guard let realtimePausedUntil else { return false }
+        return realtimePausedUntil > date
+    }
+}
+
+struct TransferSummary: Codable, Equatable {
+    var filesChanged: Int?
+    var filesTransferred: Int?
+    var filesDeleted: Int?
+    var totalBytes: Int64?
+    var transferredBytes: Int64?
+    var bytesPerSecond: Double?
+}
+
+struct VerificationReport: Codable, Equatable {
+    let verifiedAt: Date
+    let matches: Bool
+    let message: String
+}
+
+enum RunTrigger: String, Codable, CaseIterable {
+    case manual
+    case preview
+    case schedule
+    case realtime
+    case volumeMount
+    case retry
+    case verification
 }
 
 struct RunRecord: Codable, Identifiable, Equatable {
@@ -157,6 +202,9 @@ struct RunRecord: Codable, Identifiable, Equatable {
     let dryRun: Bool
     let message: String
     let logPath: String
+    var transferSummary: TransferSummary? = nil
+    var verification: VerificationReport? = nil
+    var trigger: RunTrigger? = nil
 
     var duration: TimeInterval { endedAt.timeIntervalSince(startedAt) }
 }
