@@ -114,5 +114,24 @@
       ]]></description>
       <enclosure url="https://github.com/Foiler25/Project-Sync/releases/download/v1.2.5/Project-Sync-1.2.5.dmg" sparkle:edSignature="PN5vmWLorn7eChl13z2+wXTh4UJ28IP5WguKaItIlp/zOGlGzIMxkS3xWgmU5DheNdbE4UBmGpLqC/StoQ8HBQ==" length="3709050" type="application/octet-stream" />
     </item>
+      <item>
+      <title>Project Sync 1.2.6</title>
+      <pubDate>Tue, 14 Jul 2026 18:34:24 +0000</pubDate>
+      <sparkle:version>9</sparkle:version>
+      <sparkle:shortVersionString>1.2.6</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+<h3>Project Sync 1.2.6</h3>
+<h4>Changed</h4>
+<ul>
+<li>Closing the Project Sync window now keeps the app running in the menu bar instead of quitting, so scheduled and real-time sync jobs can continue in the background.</li>
+<li>Use <strong>Open Project Sync</strong> from the menu bar whenever you want to bring the main window back. Choose <strong>Quit Project Sync</strong> from the same menu when you want to stop the app.</li>
+</ul>
+<h4>Install &amp; update</h4>
+<p>Existing users can use <strong>Check for Updates…</strong> in Project Sync.</p>
+<p>New users: download <code>Project-Sync-1.2.6.dmg</code>, open it, and drag Project Sync to Applications.</p>
+      ]]></description>
+      <enclosure url="https://github.com/Foiler25/Project-Sync/releases/download/v1.2.6/Project-Sync-1.2.6.dmg" sparkle:edSignature="nUV2DU9eROcBpqk45PzcEtYNVK+BeLqX3uaQYSRCaraXgfJApK+bNBLPpE5P9Sy8fNCxjiVQgZ0lZ1Lst3RZBg==" length="3717989" type="application/octet-stream" />
+    </item>
   </channel>
 </rss>
