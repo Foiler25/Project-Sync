@@ -3,6 +3,7 @@ import SwiftUI
 
 @main
 struct ProjectSyncApp: App {
+    @NSApplicationDelegateAdaptor(ProjectSyncApplicationDelegate.self) private var applicationDelegate
     @StateObject private var store: JobStore
     @StateObject private var updates: UpdateManager
 
@@ -13,7 +14,7 @@ struct ProjectSyncApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("Project Sync") {
+        WindowGroup("Project Sync", id: "main") {
             ContentView()
                 .environmentObject(store)
                 .environmentObject(updates)
@@ -50,6 +51,7 @@ struct ProjectSyncApp: App {
 }
 
 struct MenuBarContent: View {
+    @Environment(\.openWindow) private var openWindow
     @EnvironmentObject private var store: JobStore
     @EnvironmentObject private var updates: UpdateManager
 
@@ -74,8 +76,13 @@ struct MenuBarContent: View {
         }
         Divider()
         Button("Open Project Sync") {
+            NSApp.setActivationPolicy(.regular)
+            openWindow(id: "main")
             NSApp.activate(ignoringOtherApps: true)
-            NSApp.windows.first { $0.canBecomeMain }?.makeKeyAndOrderFront(nil)
+            DispatchQueue.main.async {
+                NSApp.windows.first { $0.title == "Project Sync" && $0.canBecomeMain }?
+                    .makeKeyAndOrderFront(nil)
+            }
         }
         Button("Check for Updates…") { updates.checkForUpdates() }
             .disabled(!updates.canCheckForUpdates)
@@ -103,5 +110,49 @@ struct MenuBarContent: View {
             return "stop.fill"
         }
         return job.lastState.symbol
+    }
+}
+
+final class ProjectSyncApplicationDelegate: NSObject, NSApplicationDelegate {
+    private var windowCloseObserver: NSObjectProtocol?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        windowCloseObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            DispatchQueue.main.async {
+                guard !Self.hasVisibleAppWindow else { return }
+                NSApp.setActivationPolicy(.accessory)
+            }
+        }
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        sender.setActivationPolicy(.regular)
+        if !flag {
+            sender.windows.first { $0.title == "Project Sync" && $0.canBecomeMain }?
+                .makeKeyAndOrderFront(nil)
+        }
+        sender.activate(ignoringOtherApps: true)
+        return true
+    }
+
+    deinit {
+        if let windowCloseObserver {
+            NotificationCenter.default.removeObserver(windowCloseObserver)
+        }
+    }
+
+    private static var hasVisibleAppWindow: Bool {
+        NSApp.windows.contains { window in
+            (window.isVisible || window.isMiniaturized) &&
+                (window.canBecomeMain || window.canBecomeKey)
+        }
     }
 }
