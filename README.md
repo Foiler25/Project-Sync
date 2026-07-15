@@ -57,30 +57,6 @@ The script creates an ad-hoc signed app at `build/Project Sync.app`. Move it to 
 
 Sparkle 2.9.4 is embedded in the app bundle. The Settings window, app menu, and menu-bar menu all provide **Check for Updates…** controls.
 
-## Updates and releases
-
-Development happens on `dev`. The release script intentionally refuses to publish from that branch.
-
-The publish phase rechecks the DMG checksum and size, requires a clean `main` at the exact commit recorded during the build, asks for confirmation, creates the tag and GitHub release, then atomically appends the signed release to `appcast.xml`.
-
-The Sparkle EdDSA private key is stored in the login Keychain under account `project-sync`. Its committed public key is safe to distribute. Back up the private key somewhere secure and outside Git:
-
-```sh
-.build/artifacts/sparkle/Sparkle/bin/generate_keys \
-  --account project-sync \
-  -x /secure/location/project-sync-sparkle-private-key.txt
-```
-
-`keyfile.txt` is gitignored and can be used as a portable signing-key fallback by `build-dmg.sh`. Losing the private key means existing Sparkle-enabled installations cannot trust future updates.
-
-For Developer ID signing, set `PROJECT_SYNC_CODE_SIGN_IDENTITY` when building:
-
-```sh
-PROJECT_SYNC_CODE_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
-  ./build-dmg.sh
-```
-
-The first Sparkle-enabled build must be installed manually. Releases after that can update it through the appcast hosted on `main`.
 
 ## Safety notes
 
