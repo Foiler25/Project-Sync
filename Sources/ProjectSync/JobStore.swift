@@ -195,11 +195,13 @@ final class JobStore: ObservableObject {
             }
         }
         runningJobIDs.insert(id)
-        NotificationCenter.default.post(
-            name: .projectSyncDidStart,
-            object: nil,
-            userInfo: ["jobName": job.name, "dryRun": dryRun]
-        )
+        if job.sendsNotifications {
+            NotificationCenter.default.post(
+                name: .projectSyncDidStart,
+                object: nil,
+                userInfo: ["jobName": job.name, "dryRun": dryRun]
+            )
+        }
         Task { await SystemNotificationManager.shared.post(.started, for: job) }
         let box = RunningProcess()
         processBoxes[id] = box
@@ -873,11 +875,13 @@ final class JobStore: ObservableObject {
                     for: job
                 )
             }
-            NotificationCenter.default.post(
-                name: .projectSyncBackupIsStale,
-                object: nil,
-                userInfo: ["jobName": job.name, "days": staleReminderDays]
-            )
+            if job.sendsNotifications {
+                NotificationCenter.default.post(
+                    name: .projectSyncBackupIsStale,
+                    object: nil,
+                    userInfo: ["jobName": job.name, "days": staleReminderDays]
+                )
+            }
         }
     }
 
