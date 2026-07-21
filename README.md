@@ -25,7 +25,7 @@ It is inspired by the lightweight native feel of [Syncthing for macOS](https://g
 - Optional checksum verification after syncs or on demand
 - Optional versioned copies of replaced/deleted files with retention and item-level restore
 - Exclusion presets, custom exclusion patterns, job duplication, and per-job notes
-- Configurable macOS notifications, stale-backup reminders, and privacy-redacted diagnostic export
+- Configurable macOS notifications, including a per-job switch for busy syncs, stale-backup reminders, and privacy-redacted diagnostic export
 - macOS extended-attribute preservation
 - Optional launch at login for unattended schedules
 

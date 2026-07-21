@@ -108,7 +108,7 @@ final class SystemNotificationManager: ObservableObject {
     /// Posts a concise notification when its corresponding preference is on.
     /// The method is safe to call after permission has been denied.
     func post(_ event: SyncNotificationEvent, for job: SyncJob) async {
-        guard isEnabled(event), let notificationCenter else { return }
+        guard isEnabled(event, for: job), let notificationCenter else { return }
         guard await requestAuthorization() else { return }
 
         let presentation = presentation(for: event, jobName: job.name)
@@ -142,6 +142,10 @@ final class SystemNotificationManager: ObservableObject {
         case .staleBackup:
             return notifyOnStaleBackup
         }
+    }
+
+    func isEnabled(_ event: SyncNotificationEvent, for job: SyncJob) -> Bool {
+        job.sendsNotifications && isEnabled(event)
     }
 
     private func presentation(

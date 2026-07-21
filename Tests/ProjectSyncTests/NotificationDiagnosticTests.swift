@@ -47,6 +47,21 @@ final class NotificationDiagnosticTests: XCTestCase {
         await manager.post(.failed(message: "No UI should appear"), for: SyncJob())
     }
 
+    @MainActor
+    func testJobCanDisableNotificationsIndependentlyOfGlobalPreferences() throws {
+        let suiteName = "ProjectSync.NotificationTests.\(UUID().uuidString)"
+        let preferences = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { preferences.removePersistentDomain(forName: suiteName) }
+        let manager = SystemNotificationManager(preferences: preferences, notificationCenter: nil)
+
+        var job = SyncJob()
+        job.notificationsEnabled = false
+
+        XCTAssertTrue(manager.isEnabled(.failed(message: "failed")))
+        XCTAssertFalse(job.sendsNotifications)
+        XCTAssertFalse(manager.isEnabled(.failed(message: "failed"), for: job))
+    }
+
     func testDiagnosticReportRedactsPrivateDetailsAndIncludesUsefulState() throws {
         var job = SyncJob()
         job.name = "Nightly Backup"

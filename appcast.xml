@@ -2,7 +2,7 @@
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
     <title>Project Sync Updates</title>
-    <link>https://github.com/Foiler25/Project-Sync</link>
+    <link>https://github.com/holdmysocks/Project-Sync</link>
     <description>Stable updates for Project Sync.</description>
     <language>en</language>
       <item>
@@ -25,7 +25,7 @@
 <p>Existing users can use <strong>Check for Updates…</strong> in Project Sync.</p>
 <p>New users: download <code>Project-Sync-1.0.0.dmg</code>, open it, and drag Project Sync to Applications.</p>
       ]]></description>
-      <enclosure url="https://github.com/Foiler25/Project-Sync/releases/download/v1.0.0/Project-Sync-1.0.0.dmg" sparkle:edSignature="5vj9yoDQ49JfOrFuGXdmVtz41Ayrnymp6ns2yCSRb9M/06y8QoST/UGOyzv+ANai5fcimjBRTtK7mtL0J/aFCQ==" length="3383972" type="application/octet-stream" />
+      <enclosure url="https://github.com/holdmysocks/Project-Sync/releases/download/v1.0.0/Project-Sync-1.0.0.dmg" sparkle:edSignature="5vj9yoDQ49JfOrFuGXdmVtz41Ayrnymp6ns2yCSRb9M/06y8QoST/UGOyzv+ANai5fcimjBRTtK7mtL0J/aFCQ==" length="3383972" type="application/octet-stream" />
     </item>
       <item>
       <title>Project Sync 1.1.0</title>
@@ -53,7 +53,7 @@
 <p>Existing users can use <strong>Check for Updates…</strong> in Project Sync.</p>
 <p>New users: download <code>Project-Sync-1.1.0.dmg</code>, open it, and drag Project Sync to Applications.</p>
       ]]></description>
-      <enclosure url="https://github.com/Foiler25/Project-Sync/releases/download/v1.1.0/Project-Sync-1.1.0.dmg" sparkle:edSignature="v9VP3d1/ILjop+LgsazixVeDl2KLUadQ5C96Pb6lOChLr6d6dgHyE04sstaciV1O985Hwpy9fOTvuZC7cuLPAg==" length="3402759" type="application/octet-stream" />
+      <enclosure url="https://github.com/holdmysocks/Project-Sync/releases/download/v1.1.0/Project-Sync-1.1.0.dmg" sparkle:edSignature="v9VP3d1/ILjop+LgsazixVeDl2KLUadQ5C96Pb6lOChLr6d6dgHyE04sstaciV1O985Hwpy9fOTvuZC7cuLPAg==" length="3402759" type="application/octet-stream" />
     </item>
       <item>
       <title>Project Sync 1.2.0</title>
@@ -85,7 +85,7 @@
 <p>Existing users can use <strong>Check for Updates…</strong> in Project Sync.</p>
 <p>New users: download <code>Project-Sync-1.2.0.dmg</code>, open it, and drag Project Sync to Applications.</p>
       ]]></description>
-      <enclosure url="https://github.com/Foiler25/Project-Sync/releases/download/v1.2.0/Project-Sync-1.2.0.dmg" sparkle:edSignature="LqmFRdcVQBeGHL204pwqS+pugICzcQjBKe5LqZ8wP4NYmDzJnSdyDTqUjlPRp7hW44i69p2BwdfZsjqaGYoWDw==" length="3647541" type="application/octet-stream" />
+      <enclosure url="https://github.com/holdmysocks/Project-Sync/releases/download/v1.2.0/Project-Sync-1.2.0.dmg" sparkle:edSignature="LqmFRdcVQBeGHL204pwqS+pugICzcQjBKe5LqZ8wP4NYmDzJnSdyDTqUjlPRp7hW44i69p2BwdfZsjqaGYoWDw==" length="3647541" type="application/octet-stream" />
     </item>
       <item>
       <title>Project Sync 1.2.5</title>
@@ -112,7 +112,7 @@
 <p>Existing users can use <strong>Check for Updates…</strong> in Project Sync.</p>
 <p>New users: download <code>Project-Sync-1.2.5.dmg</code>, open it, and drag Project Sync to Applications.</p>
       ]]></description>
-      <enclosure url="https://github.com/Foiler25/Project-Sync/releases/download/v1.2.5/Project-Sync-1.2.5.dmg" sparkle:edSignature="PN5vmWLorn7eChl13z2+wXTh4UJ28IP5WguKaItIlp/zOGlGzIMxkS3xWgmU5DheNdbE4UBmGpLqC/StoQ8HBQ==" length="3709050" type="application/octet-stream" />
+      <enclosure url="https://github.com/holdmysocks/Project-Sync/releases/download/v1.2.5/Project-Sync-1.2.5.dmg" sparkle:edSignature="PN5vmWLorn7eChl13z2+wXTh4UJ28IP5WguKaItIlp/zOGlGzIMxkS3xWgmU5DheNdbE4UBmGpLqC/StoQ8HBQ==" length="3709050" type="application/octet-stream" />
     </item>
       <item>
       <title>Project Sync 1.2.6</title>
@@ -131,7 +131,7 @@
 <p>Existing users can use <strong>Check for Updates…</strong> in Project Sync.</p>
 <p>New users: download <code>Project-Sync-1.2.6.dmg</code>, open it, and drag Project Sync to Applications.</p>
       ]]></description>
-      <enclosure url="https://github.com/Foiler25/Project-Sync/releases/download/v1.2.6/Project-Sync-1.2.6.dmg" sparkle:edSignature="nUV2DU9eROcBpqk45PzcEtYNVK+BeLqX3uaQYSRCaraXgfJApK+bNBLPpE5P9Sy8fNCxjiVQgZ0lZ1Lst3RZBg==" length="3717989" type="application/octet-stream" />
+      <enclosure url="https://github.com/holdmysocks/Project-Sync/releases/download/v1.2.6/Project-Sync-1.2.6.dmg" sparkle:edSignature="nUV2DU9eROcBpqk45PzcEtYNVK+BeLqX3uaQYSRCaraXgfJApK+bNBLPpE5P9Sy8fNCxjiVQgZ0lZ1Lst3RZBg==" length="3717989" type="application/octet-stream" />
     </item>
   </channel>
 </rss>

@@ -141,6 +141,14 @@ struct JobEditorView: View {
                                 .foregroundStyle(.secondary)
                         }
 
+                        Toggle("Send macOS notifications for this sync", isOn: Binding(
+                            get: { job.sendsNotifications },
+                            set: { job.notificationsEnabled = $0 }
+                        ))
+                        Text("Turn this off for a busy job, such as a real-time sync. Notification types are configured in Settings.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+
                         VStack(alignment: .leading, spacing: 8) {
                             Toggle("Keep versioned copies of replaced and deleted files", isOn: optionalBoolBinding(\.archiveReplacedFiles))
                                 .disabled(job.destination.kind == .remote)

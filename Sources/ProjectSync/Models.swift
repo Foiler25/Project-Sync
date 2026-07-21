@@ -151,6 +151,8 @@ struct SyncJob: Codable, Identifiable, Equatable {
     var verifyAfterSync: Bool?
     var verifyPermissions: Bool?
     var runWhenVolumeMounts: Bool?
+    /// `nil` preserves notification delivery for jobs saved before this option existed.
+    var notificationsEnabled: Bool?
     var realtimePausedUntil: Date?
     var lastVerificationAt: Date?
     var lastVerificationSucceeded: Bool?
@@ -164,6 +166,7 @@ extension SyncJob {
         verifyPermissions ?? (source.kind != .network && destination.kind != .network)
     }
     var runsWhenVolumeMounts: Bool { runWhenVolumeMounts ?? false }
+    var sendsNotifications: Bool { notificationsEnabled ?? true }
 
     func realtimeIsPaused(at date: Date = Date()) -> Bool {
         guard let realtimePausedUntil else { return false }
